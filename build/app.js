@@ -87,7 +87,9 @@ function getVideoComments(channelName, videoTitle, videoId, gender, nextPageToke
     if (nextPageToken === void 0) { nextPageToken = ''; }
     axios.get("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken)
         .then(function (res) {
-        console.log(res.data.items);
+        // TODO figure out how to get all comments
+        // console.log(res.data.items)
+        console.log("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken);
         for (var _i = 0, _a = res.data.items; _i < _a.length; _i++) {
             var item = _a[_i];
             item.snippet.textDisplay ? commentsBreakdown[channelName][gender][videoTitle].comments.push(item.snippet.textDisplay) : '';
@@ -112,6 +114,7 @@ function getVideoComments(channelName, videoTitle, videoId, gender, nextPageToke
 }
 function getCommentSentiment(channelName, videoTitle, gender) {
     var comments = commentsBreakdown[channelName][gender][videoTitle].comments;
+    console.log(comments);
     for (var _i = 0, comments_2 = comments; _i < comments_2.length; _i++) {
         var comment = comments_2[_i];
         var result = sentiment.analyze(comment);

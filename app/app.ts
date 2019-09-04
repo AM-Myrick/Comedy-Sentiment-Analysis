@@ -90,13 +90,13 @@ function getVideoTitleGender(channelName: string) {
 }
 
 function getVideoComments(channelName: string, videoTitle: string, videoId: string, gender: string, nextPageToken = '') {
-  axios.get(`https://www.googleapis.com/youtube/v3/commentThreads?part=snippet%2Creplies&videoId=${videoId}&key=${YOUTUBE_API_KEY}&pageToken=${nextPageToken}`)
+  axios.get(`https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=${videoId}&key=${YOUTUBE_API_KEY}&pageToken=${nextPageToken}`)
     .then((res: any) => {
-      // TODO figure out how to get all comments
+      // TODO figure out how to get all comments SOLUTION - use comments endpoint to get all replies to any given comment
+      // get rid of if item.replies block at that point
       // console.log(res.data.items)
       for (let item of res.data.items) {
         item.snippet.textDisplay ? commentsBreakdown[channelName][gender][videoTitle].comments.push(item.snippet.textDisplay) : ''
-
         if (item.replies) {
           let comments = item.replies.comments
           for (let comment of comments) {
@@ -118,6 +118,7 @@ function getVideoComments(channelName: string, videoTitle: string, videoId: stri
 
 function getCommentSentiment(channelName: string, videoTitle: string, gender: string) {
   const comments: string[] = commentsBreakdown[channelName][gender][videoTitle].comments
+  console.log(comments)
   for (let comment of comments) {
     let result = sentiment.analyze(comment)
     commentsBreakdown[channelName][gender][videoTitle].sentimentScores.push(result.score)
