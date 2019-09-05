@@ -79,36 +79,35 @@ function getVideoTitleGender(channelName: string) {
     channelBreakdown[channelName][getGender].videoIds.push(videoIds[channelName][item])
     channelBreakdown[channelName][getGender].titles.push(videoTitle)
 
-    commentsBreakdown[channelName][getGender][videoTitle] = {
+    commentsBreakdown[channelName][getGender] = {
       comments: [],
       sentimentScores: [],
       positiveWords: [],
       negativeWords: []
     }
-    getVideoComments(channelName, videoTitle, videoIds[channelName][item], getGender)
+    getVideoComments(channelName, videoIds[channelName][item], getGender)
   }
 }
 
-function getVideoComments(channelName: string, videoTitle: string, videoId: string, gender: string, nextPageToken = '') {
+function getVideoComments(channelName: string, videoId: string, gender: string, nextPageToken = '') {
   axios.get(`https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=${videoId}&key=${YOUTUBE_API_KEY}&pageToken=${nextPageToken}`)
     .then((res: any) => {
-      // TODO figure out how to get all comments SOLUTION - use comments endpoint to get all replies to any given comment
-      // get rid of if item.replies block at that point
-      // console.log(res.data.items)
       for (let item of res.data.items) {
-        item.snippet.textDisplay ? commentsBreakdown[channelName][gender][videoTitle].comments.push(item.snippet.textDisplay) : ''
+        let commentText = item.snippet.topLevelComment.snippet.textDisplay
+        commentsBreakdown[channelName][gender].comments.push(commentText)
         if (item.replies) {
           let comments = item.replies.comments
           for (let comment of comments) {
-            commentsBreakdown[channelName][gender][videoTitle].comments.push(comment.snippet.textDisplay)
+            commentsBreakdown[channelName][gender].comments.push(comment.snippet.textDisplay)
           }
         }
       }
       if (res.data.nextPageToken) {
-        getVideoComments(channelName, videoTitle, videoId, gender, res.data.nextPageToken)
+        getVideoComments(channelName, videoId, gender, res.data.nextPageToken)
       }
       else {
-        getCommentSentiment(channelName, videoTitle, gender)
+        // TODO this function is called as many times as the parent function is called - figure out a fix
+        getCommentSentiment(channelName, gender)
       }
     })
     .catch((err: any) => {
@@ -116,16 +115,14 @@ function getVideoComments(channelName: string, videoTitle: string, videoId: stri
     })
 }
 
-function getCommentSentiment(channelName: string, videoTitle: string, gender: string) {
-  const comments: string[] = commentsBreakdown[channelName][gender][videoTitle].comments
-  console.log(comments)
+function getCommentSentiment(channelName: string, gender: string) {
+  const comments: string[] = commentsBreakdown[channelName][gender].comments
   for (let comment of comments) {
     let result = sentiment.analyze(comment)
-    commentsBreakdown[channelName][gender][videoTitle].sentimentScores.push(result.score)
-    result.positive.map((str: any) => commentsBreakdown[channelName][gender][videoTitle].positiveWords.push(str))
-    result.negative.map((str: any) => commentsBreakdown[channelName][gender][videoTitle].negativeWords.push(str))
+    commentsBreakdown[channelName][gender].sentimentScores.push(result.score)
+    result.positive.map((str: any) => commentsBreakdown[channelName][gender].positiveWords.push(str))
+    result.negative.map((str: any) => commentsBreakdown[channelName][gender].negativeWords.push(str))
   }
-  console.log(commentsBreakdown[channelName][gender][videoTitle].comments.length, videoTitle)
 }
 
 // for (let idx in channelIds) {

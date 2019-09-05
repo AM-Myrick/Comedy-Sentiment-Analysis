@@ -74,55 +74,52 @@ function getVideoTitleGender(channelName) {
         channelBreakdown[channelName][getGender].dislikeCounts.push(videoInfo[channelName].dislikeCounts[item]);
         channelBreakdown[channelName][getGender].videoIds.push(videoIds[channelName][item]);
         channelBreakdown[channelName][getGender].titles.push(videoTitle);
-        commentsBreakdown[channelName][getGender][videoTitle] = {
+        commentsBreakdown[channelName][getGender] = {
             comments: [],
             sentimentScores: [],
             positiveWords: [],
             negativeWords: []
         };
-        getVideoComments(channelName, videoTitle, videoIds[channelName][item], getGender);
+        getVideoComments(channelName, videoIds[channelName][item], getGender);
     }
 }
-function getVideoComments(channelName, videoTitle, videoId, gender, nextPageToken) {
+function getVideoComments(channelName, videoId, gender, nextPageToken) {
     if (nextPageToken === void 0) { nextPageToken = ''; }
-    axios.get("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken)
+    axios.get("https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken)
         .then(function (res) {
-        // TODO figure out how to get all comments
-        // console.log(res.data.items)
-        console.log("https://www.googleapis.com/youtube/v3/commentThreads?part=snippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken);
         for (var _i = 0, _a = res.data.items; _i < _a.length; _i++) {
             var item = _a[_i];
-            item.snippet.textDisplay ? commentsBreakdown[channelName][gender][videoTitle].comments.push(item.snippet.textDisplay) : '';
+            var commentText = item.snippet.topLevelComment.snippet.textDisplay;
+            commentsBreakdown[channelName][gender].comments.push(commentText);
             if (item.replies) {
                 var comments = item.replies.comments;
                 for (var _b = 0, comments_1 = comments; _b < comments_1.length; _b++) {
                     var comment = comments_1[_b];
-                    commentsBreakdown[channelName][gender][videoTitle].comments.push(comment.snippet.textDisplay);
+                    commentsBreakdown[channelName][gender].comments.push(comment.snippet.textDisplay);
                 }
             }
         }
         if (res.data.nextPageToken) {
-            getVideoComments(channelName, videoTitle, videoId, gender, res.data.nextPageToken);
+            getVideoComments(channelName, videoId, gender, res.data.nextPageToken);
         }
         else {
-            getCommentSentiment(channelName, videoTitle, gender);
+            getCommentSentiment(channelName, gender);
         }
     })
         .catch(function (err) {
         console.log(err);
     });
 }
-function getCommentSentiment(channelName, videoTitle, gender) {
-    var comments = commentsBreakdown[channelName][gender][videoTitle].comments;
-    console.log(comments);
+function getCommentSentiment(channelName, gender) {
+    var comments = commentsBreakdown[channelName][gender].comments;
     for (var _i = 0, comments_2 = comments; _i < comments_2.length; _i++) {
         var comment = comments_2[_i];
         var result = sentiment.analyze(comment);
-        commentsBreakdown[channelName][gender][videoTitle].sentimentScores.push(result.score);
-        result.positive.map(function (str) { return commentsBreakdown[channelName][gender][videoTitle].positiveWords.push(str); });
-        result.negative.map(function (str) { return commentsBreakdown[channelName][gender][videoTitle].negativeWords.push(str); });
+        commentsBreakdown[channelName][gender].sentimentScores.push(result.score);
+        result.positive.map(function (str) { return commentsBreakdown[channelName][gender].positiveWords.push(str); });
+        result.negative.map(function (str) { return commentsBreakdown[channelName][gender].negativeWords.push(str); });
     }
-    console.log(commentsBreakdown[channelName][gender][videoTitle].comments.length, videoTitle);
+    console.log(commentsBreakdown[channelName][gender].negativeWords);
 }
 // for (let idx in channelIds) {
 //     videoIds[channels[idx]] = []
