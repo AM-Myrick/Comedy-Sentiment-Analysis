@@ -7,7 +7,7 @@ var gender = require('gender');
 var Sentiment = require('sentiment');
 var sentiment = new Sentiment();
 require('dotenv').config();
-var maxResults = 5; //maximum results given by YouTube API per get request
+var maxResults = 10; //maximum results given by YouTube API per get request
 var YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 var channels = ['The Laugh Factory', 'Just For Laughs', 'Comedy Central Stand-Up', 'Dry Bar Comedy'];
 var channelIds = ['UCxyCzPY2pjAjrxoSYclpuLg', 'UCqq3PZwp8Ob8_jN0esCunIw', 'UCtw7q4SyOeoCwM1i_3x8lDg', 'UCvlVuntLjdURVD3b3Hx7kxw'];
@@ -37,12 +37,10 @@ function getChannelVideoIds(channelName, channelId, nextPageToken) {
             var item = _a[_i];
             videoIds[channelName].push(item.id.videoId);
         }
-        if (videoIds[channelName].length < 10) {
-            getChannelVideoIds(channelName, channelId, res.data.nextPageToken);
-        }
-        else {
-            getVideoInfo(channelName);
-        }
+        // if (videoIds[channelName].length < 10) {
+        //   getChannelVideoIds(channelName, channelId, res.data.nextPageToken)
+        // }
+        getVideoInfo(channelName);
     })
         .catch(function (err) {
         console.log(err);
@@ -66,6 +64,7 @@ function getVideoInfo(channelName) {
     });
 }
 function getVideoTitleGender(channelName) {
+    var promises = [];
     for (var item in videoInfo[channelName].titles) {
         var videoTitle = videoInfo[channelName].titles[item];
         var getGender = gender.guess(videoTitle).gender;
@@ -80,12 +79,17 @@ function getVideoTitleGender(channelName) {
             positiveWords: [],
             negativeWords: []
         };
-        getVideoComments(channelName, videoIds[channelName][item], getGender);
+        promises.push(getVideoComments(channelName, videoIds[channelName][item], getGender));
     }
+    Promise.all(promises).then(function (values) {
+        getCommentSentiment(channelName, 'male');
+        getCommentSentiment(channelName, 'female');
+        getCommentSentiment(channelName, 'unknown');
+    });
 }
 function getVideoComments(channelName, videoId, gender, nextPageToken) {
     if (nextPageToken === void 0) { nextPageToken = ''; }
-    axios.get("https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken)
+    return axios.get("https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=" + videoId + "&key=" + YOUTUBE_API_KEY + "&pageToken=" + nextPageToken)
         .then(function (res) {
         for (var _i = 0, _a = res.data.items; _i < _a.length; _i++) {
             var item = _a[_i];
@@ -100,17 +104,19 @@ function getVideoComments(channelName, videoId, gender, nextPageToken) {
             }
         }
         if (res.data.nextPageToken) {
-            getVideoComments(channelName, videoId, gender, res.data.nextPageToken);
+            return getVideoComments(channelName, videoId, gender, res.data.nextPageToken);
         }
         else {
-            getCommentSentiment(channelName, gender);
+            // TODO this function is called as many times as the parent function is called - figure out a fix
+            return res.data;
         }
     })
         .catch(function (err) {
-        console.log(err);
+        return err;
     });
 }
 function getCommentSentiment(channelName, gender) {
+    console.log('here');
     var comments = commentsBreakdown[channelName][gender].comments;
     for (var _i = 0, comments_2 = comments; _i < comments_2.length; _i++) {
         var comment = comments_2[_i];
@@ -119,7 +125,6 @@ function getCommentSentiment(channelName, gender) {
         result.positive.map(function (str) { return commentsBreakdown[channelName][gender].positiveWords.push(str); });
         result.negative.map(function (str) { return commentsBreakdown[channelName][gender].negativeWords.push(str); });
     }
-    console.log(commentsBreakdown[channelName][gender].negativeWords);
 }
 // for (let idx in channelIds) {
 //     videoIds[channels[idx]] = []

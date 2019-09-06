@@ -6,7 +6,7 @@ const Sentiment = require('sentiment');
 const sentiment = new Sentiment();
 
 require('dotenv').config();
-const maxResults = 5 //maximum results given by YouTube API per get request
+const maxResults = 10 //maximum results given by YouTube API per get request
 const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
 const channels: string[] = ['The Laugh Factory', 'Just For Laughs', 'Comedy Central Stand-Up', 'Dry Bar Comedy']
 const channelIds: string[] = ['UCxyCzPY2pjAjrxoSYclpuLg', 'UCqq3PZwp8Ob8_jN0esCunIw', 'UCtw7q4SyOeoCwM1i_3x8lDg', 'UCvlVuntLjdURVD3b3Hx7kxw']
@@ -40,12 +40,10 @@ function getChannelVideoIds(channelName:string, channelId: string, nextPageToken
       for (let item of res.data.items) {
         videoIds[channelName].push(item.id.videoId)
       }
-      if (videoIds[channelName].length < 10) {
-        getChannelVideoIds(channelName, channelId, res.data.nextPageToken)
-      }
-      else {
-        getVideoInfo(channelName)
-      }
+      // if (videoIds[channelName].length < 10) {
+      //   getChannelVideoIds(channelName, channelId, res.data.nextPageToken)
+      // }
+      getVideoInfo(channelName)
     })
     .catch((err: any) => {
       console.log(err)
@@ -70,6 +68,7 @@ function getVideoInfo(channelName: string) {
 }
 
 function getVideoTitleGender(channelName: string) {
+  const promises = []
   for (let item in videoInfo[channelName].titles) {
     const videoTitle: string = videoInfo[channelName].titles[item]
     const getGender: string = gender.guess(videoTitle).gender
@@ -85,12 +84,17 @@ function getVideoTitleGender(channelName: string) {
       positiveWords: [],
       negativeWords: []
     }
-    getVideoComments(channelName, videoIds[channelName][item], getGender)
+    promises.push(getVideoComments(channelName, videoIds[channelName][item], getGender))
   }
+  Promise.all(promises).then((values) => { 
+    getCommentSentiment(channelName, 'male')
+    getCommentSentiment(channelName, 'female')
+    getCommentSentiment(channelName, 'unknown')
+  })
 }
 
 function getVideoComments(channelName: string, videoId: string, gender: string, nextPageToken = '') {
-  axios.get(`https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=${videoId}&key=${YOUTUBE_API_KEY}&pageToken=${nextPageToken}`)
+  return axios.get(`https://www.googleapis.com/youtube/v3/commentThreads?part=id%2Csnippet%2Creplies&videoId=${videoId}&key=${YOUTUBE_API_KEY}&pageToken=${nextPageToken}`)
     .then((res: any) => {
       for (let item of res.data.items) {
         let commentText = item.snippet.topLevelComment.snippet.textDisplay
@@ -103,15 +107,14 @@ function getVideoComments(channelName: string, videoId: string, gender: string, 
         }
       }
       if (res.data.nextPageToken) {
-        getVideoComments(channelName, videoId, gender, res.data.nextPageToken)
+        return getVideoComments(channelName, videoId, gender, res.data.nextPageToken)
       }
       else {
-        // TODO this function is called as many times as the parent function is called - figure out a fix
-        getCommentSentiment(channelName, gender)
+        return res.data
       }
     })
     .catch((err: any) => {
-      console.log(err)
+      return err
     })
 }
 
