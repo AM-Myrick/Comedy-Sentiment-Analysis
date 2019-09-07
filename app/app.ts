@@ -14,10 +14,11 @@ interface VideoDict {
   [key: string]: any
 }
 
-let videoIds: VideoDict = {}
-let videoInfo: VideoDict = {}
-let channelBreakdown: VideoDict = {}
-let commentsBreakdown: VideoDict = {}
+const videoIds: VideoDict = {}
+const videoInfo: VideoDict = {}
+const channelBreakdown: VideoDict = {}
+const commentsBreakdown: VideoDict = {}
+const finalData: VideoDict = {}
 
 // used to get and store channel ids
 // const getChannelId = (channelName: string) => {
@@ -72,9 +73,9 @@ function getVideoTitleGender(channelName: string) {
   for (let item in videoInfo[channelName].titles) {
     const videoTitle: string = videoInfo[channelName].titles[item]
     const getGender: string = gender.guess(videoTitle).gender
-    channelBreakdown[channelName][getGender].viewCounts.push(videoInfo[channelName].viewCounts[item])
-    channelBreakdown[channelName][getGender].likeCounts.push(videoInfo[channelName].likeCounts[item])
-    channelBreakdown[channelName][getGender].dislikeCounts.push(videoInfo[channelName].dislikeCounts[item])
+    channelBreakdown[channelName][getGender].viewCounts.push(parseInt(videoInfo[channelName].viewCounts[item]))
+    channelBreakdown[channelName][getGender].likeCounts.push(parseInt(videoInfo[channelName].likeCounts[item]))
+    channelBreakdown[channelName][getGender].dislikeCounts.push(parseInt(videoInfo[channelName].dislikeCounts[item]))
     channelBreakdown[channelName][getGender].videoIds.push(videoIds[channelName][item])
     channelBreakdown[channelName][getGender].titles.push(videoTitle)
 
@@ -126,6 +127,21 @@ function getCommentSentiment(channelName: string, gender: string) {
     result.positive.map((str: any) => commentsBreakdown[channelName][gender].positiveWords.push(str))
     result.negative.map((str: any) => commentsBreakdown[channelName][gender].negativeWords.push(str))
   }
+  getAverages(channelName, gender)
+}
+
+function getAverages(channelName: string, gender: string) {
+  const average = (array: number[]) => array.reduce((a, b) => a + b) / array.length
+
+  const sentimentScores: number[] = commentsBreakdown[channelName][gender].sentimentScores
+  const viewCounts: number[] = channelBreakdown[channelName][gender].viewCounts
+  const likeCounts: number[] = channelBreakdown[channelName][gender].likeCounts
+  const dislikeCounts: number[] = channelBreakdown[channelName][gender].dislikeCounts
+
+  finalData[channelName][gender].avgSentiment = average(sentimentScores)
+  finalData[channelName][gender].avgViewCount = average(viewCounts)
+  finalData[channelName][gender].avgLikeCount = average(likeCounts)
+  finalData[channelName][gender].avgDislikeCount = average(dislikeCounts)
 }
 
 // for (let idx in channelIds) {
@@ -163,14 +179,35 @@ channelBreakdown[channels[0]] = {
   }
 }
 commentsBreakdown[channels[0]] = {
-  male: {
+  male: {},
+  female: {},
+  unknown: {}
+}
 
+finalData[channels[0]] = {
+  male: {
+    avgSentiment: null,
+    mostUsedPositiveWords: [],
+    mostUsedNegativeWords: [],
+    avgViewCount: null,
+    avgLikeCount: null,
+    avgDislikeCount: null
   },
   female: {
-
+    avgSentiment: null,
+    mostUsedPositiveWords: [],
+    mostUsedNegativeWords: [],
+    avgViewCount: null,
+    avgLikeCount: null,
+    avgDislikeCount: null
   },
   unknown: {
-
+    avgSentiment: null,
+    mostUsedPositiveWords: [],
+    mostUsedNegativeWords: [],
+    avgViewCount: null,
+    avgLikeCount: null,
+    avgDislikeCount: null
   }
 }
 getChannelVideoIds(channels[0], channelIds[0])

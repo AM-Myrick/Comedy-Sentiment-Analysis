@@ -15,6 +15,7 @@ var videoIds = {};
 var videoInfo = {};
 var channelBreakdown = {};
 var commentsBreakdown = {};
+var finalData = {};
 // used to get and store channel ids
 // const getChannelId = (channelName: string) => {
 //     axios.get(`https://www.googleapis.com/youtube/v3/search?part=id%2Csnippet&q=${channelName}&type=channel&key=${YOUTUBE_API_KEY}`)
@@ -68,9 +69,9 @@ function getVideoTitleGender(channelName) {
     for (var item in videoInfo[channelName].titles) {
         var videoTitle = videoInfo[channelName].titles[item];
         var getGender = gender.guess(videoTitle).gender;
-        channelBreakdown[channelName][getGender].viewCounts.push(videoInfo[channelName].viewCounts[item]);
-        channelBreakdown[channelName][getGender].likeCounts.push(videoInfo[channelName].likeCounts[item]);
-        channelBreakdown[channelName][getGender].dislikeCounts.push(videoInfo[channelName].dislikeCounts[item]);
+        channelBreakdown[channelName][getGender].viewCounts.push(parseInt(videoInfo[channelName].viewCounts[item]));
+        channelBreakdown[channelName][getGender].likeCounts.push(parseInt(videoInfo[channelName].likeCounts[item]));
+        channelBreakdown[channelName][getGender].dislikeCounts.push(parseInt(videoInfo[channelName].dislikeCounts[item]));
         channelBreakdown[channelName][getGender].videoIds.push(videoIds[channelName][item]);
         channelBreakdown[channelName][getGender].titles.push(videoTitle);
         commentsBreakdown[channelName][getGender] = {
@@ -107,7 +108,6 @@ function getVideoComments(channelName, videoId, gender, nextPageToken) {
             return getVideoComments(channelName, videoId, gender, res.data.nextPageToken);
         }
         else {
-            // TODO this function is called as many times as the parent function is called - figure out a fix
             return res.data;
         }
     })
@@ -116,7 +116,6 @@ function getVideoComments(channelName, videoId, gender, nextPageToken) {
     });
 }
 function getCommentSentiment(channelName, gender) {
-    console.log('here');
     var comments = commentsBreakdown[channelName][gender].comments;
     for (var _i = 0, comments_2 = comments; _i < comments_2.length; _i++) {
         var comment = comments_2[_i];
@@ -125,6 +124,19 @@ function getCommentSentiment(channelName, gender) {
         result.positive.map(function (str) { return commentsBreakdown[channelName][gender].positiveWords.push(str); });
         result.negative.map(function (str) { return commentsBreakdown[channelName][gender].negativeWords.push(str); });
     }
+    getAverages(channelName, gender);
+}
+function getAverages(channelName, gender) {
+    var average = function (array) { return array.reduce(function (a, b) { return a + b; }) / array.length; };
+    var sentimentScores = commentsBreakdown[channelName][gender].sentimentScores;
+    var viewCounts = channelBreakdown[channelName][gender].viewCounts;
+    var likeCounts = channelBreakdown[channelName][gender].likeCounts;
+    var dislikeCounts = channelBreakdown[channelName][gender].dislikeCounts;
+    finalData[channelName][gender].avgSentiment = average(sentimentScores);
+    finalData[channelName][gender].avgViewCount = average(viewCounts);
+    finalData[channelName][gender].avgLikeCount = average(likeCounts);
+    finalData[channelName][gender].avgDislikeCount = average(dislikeCounts);
+    console.log(finalData);
 }
 // for (let idx in channelIds) {
 //     videoIds[channels[idx]] = []
@@ -164,5 +176,31 @@ commentsBreakdown[channels[0]] = {
     male: {},
     female: {},
     unknown: {}
+};
+finalData[channels[0]] = {
+    male: {
+        avgSentiment: null,
+        mostUsedPositiveWords: [],
+        mostUsedNegativeWords: [],
+        avgViewCount: null,
+        avgLikeCount: null,
+        avgDislikeCount: null
+    },
+    female: {
+        avgSentiment: null,
+        mostUsedPositiveWords: [],
+        mostUsedNegativeWords: [],
+        avgViewCount: null,
+        avgLikeCount: null,
+        avgDislikeCount: null
+    },
+    unknown: {
+        avgSentiment: null,
+        mostUsedPositiveWords: [],
+        mostUsedNegativeWords: [],
+        avgViewCount: null,
+        avgLikeCount: null,
+        avgDislikeCount: null
+    }
 };
 getChannelVideoIds(channels[0], channelIds[0]);
